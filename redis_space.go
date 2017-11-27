@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"go-accounting/deb"
-	"strconv"
 
 	"github.com/go-redis/redis"
 	"github.com/pkg/errors"
@@ -56,20 +55,13 @@ func NewRedisSpace(master string, addrs []string, prefix string) (deb.Space, err
 			for _, block := range blocks {
 				// persist block, if block.Key is nil then is a new block
 				if block.Key == nil {
-					var l int64
-					l, err = client.LLen(key).Result()
+					block.Key, err = client.LLen(key).Result()
 					if err != nil {
 						break
 					}
-					block.Key = strconv.Itoa(int(l))
 					err = client.RPush(key, (*redisBlock)(block)).Err()
 				} else {
-					var i int
-					i, err = strconv.Atoi(block.Key.(string))
-					if err != nil {
-						break
-					}
-					err = client.LSet(key, int64(i), (*redisBlock)(block)).Err()
+					err = client.LSet(key, block.Key.(int64), (*redisBlock)(block)).Err()
 				}
 				if err != nil {
 					err = errors.Wrap(err, "write block failed")
