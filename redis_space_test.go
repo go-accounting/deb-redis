@@ -2,8 +2,9 @@ package debredis
 
 import (
 	"fmt"
-	"go-accounting/deb"
 	"testing"
+
+	"github.com/go-accounting/deb"
 
 	"github.com/alicebob/miniredis"
 )

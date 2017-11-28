@@ -3,7 +3,8 @@ package debredis
 import (
 	"bytes"
 	"encoding/gob"
-	"go-accounting/deb"
+
+	"github.com/go-accounting/deb"
 
 	"github.com/go-redis/redis"
 	"github.com/pkg/errors"
