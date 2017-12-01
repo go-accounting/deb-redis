@@ -12,7 +12,7 @@ import (
 
 type redisBlock deb.DataBlock
 
-func NewRedisSpace(master string, addrs []string, prefix string) (deb.Space, error) {
+func NewRedisSpace(master string, addrs []string, prefix1, prefix2 *string) (deb.Space, error) {
 	client := redis.NewUniversalClient(&redis.UniversalOptions{
 		MasterName: master,
 		Addrs:      addrs,
@@ -21,10 +21,6 @@ func NewRedisSpace(master string, addrs []string, prefix string) (deb.Space, err
 		return nil, errors.Wrap(err, "ping failed")
 	}
 	var ls *deb.LargeSpace
-	key := "blocks"
-	if prefix != "" {
-		key = prefix + "/" + key
-	}
 	errch := make(chan error, 1)
 	in := func() chan *deb.DataBlock {
 		c := make(chan *deb.DataBlock)
@@ -36,14 +32,14 @@ func NewRedisSpace(master string, addrs []string, prefix string) (deb.Space, err
 			}()
 			// send all blocks by c channel
 			var l int64
-			l, err = client.LLen(key).Result()
+			l, err = client.LLen(key(prefix1, prefix2)).Result()
 			for i := int64(0); i < l; i++ {
 				if err != nil {
 					err = errors.Wrap(err, "read block failed")
 					break
 				}
 				block := ls.NewDataBlock()
-				err = client.LIndex(key, i).Scan((*redisBlock)(block))
+				err = client.LIndex(key(prefix1, prefix2), i).Scan((*redisBlock)(block))
 				c <- block
 			}
 		}()
@@ -56,13 +52,13 @@ func NewRedisSpace(master string, addrs []string, prefix string) (deb.Space, err
 			for _, block := range blocks {
 				// persist block, if block.Key is nil then is a new block
 				if block.Key == nil {
-					block.Key, err = client.LLen(key).Result()
+					block.Key, err = client.LLen(key(prefix1, prefix2)).Result()
 					if err != nil {
 						break
 					}
-					err = client.RPush(key, (*redisBlock)(block)).Err()
+					err = client.RPush(key(prefix1, prefix2), (*redisBlock)(block)).Err()
 				} else {
-					err = client.LSet(key, block.Key.(int64), (*redisBlock)(block)).Err()
+					err = client.LSet(key(prefix1, prefix2), block.Key.(int64), (*redisBlock)(block)).Err()
 				}
 				if err != nil {
 					err = errors.Wrap(err, "write block failed")
@@ -92,4 +88,15 @@ func (rb *redisBlock) UnmarshalBinary(b []byte) error {
 		return err
 	}
 	return nil
+}
+
+func key(s1, s2 *string) string {
+	if (s1 == nil || *s1 == "") && (s2 == nil || *s2 == "") {
+		return "blocks"
+	} else if s1 == nil || *s1 == "" {
+		return *s2 + "/blocks"
+	} else if s2 == nil || *s2 == "" {
+		return *s1 + "/blocks"
+	}
+	return *s1 + "/" + *s2 + "/blocks"
 }

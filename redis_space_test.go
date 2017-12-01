@@ -21,7 +21,7 @@ func (RedisSpaceBuilder) NewSpaceWithOffset(arr deb.Array, do, mo int, metadata 
 		fmt.Println(err)
 		return nil
 	}
-	space, err := NewRedisSpace("", []string{s.Addr()}, "")
+	space, err := NewRedisSpace("", []string{s.Addr()}, nil)
 	if err != nil {
 		fmt.Println(err)
 		return nil
